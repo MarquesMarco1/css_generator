@@ -1,0 +1,80 @@
+<?php
+function genererSprite($dossierImages, $nomImage, $nomStyle, $recursif, $marge) {
+    $files = trouverImages($dossierImages, $recursif);
+
+    if (empty($files)) {
+        die("Erreur : Aucune image trouvée dans le dossier spécifié.\n");
+    }
+
+    $firstImage = imagecreatefrompng($files[0]);
+    $spriteWidth = count($files) * (imagesx($firstImage) + $marge) - $marge; 
+    $spriteHeight = imagesy($firstImage);
+    $sprite = imagecreatetruecolor($spriteWidth, $spriteHeight);
+    imagedestroy($firstImage);
+
+    $x = 0;
+    $y = 0;
+
+    foreach ($files as $file) {
+        $image = imagecreatefrompng($file);
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        imagecopy($sprite, $image, $x, $y, 0, 0, $width, $height);
+        $x += $width + $marge;
+        $y += $marge; 
+
+        imagedestroy($image);
+    }
+
+    $nomImage = isset($nomImage) && $nomImage !== '' ? $nomImage : 'sprite.png';
+    imagepng($sprite, $nomImage);
+    imagedestroy($sprite);
+
+    genererCSS($files, $nomStyle, $spriteWidth, $spriteHeight, $marge);
+}
+
+function genererCSS($files, $nomStyle, $spriteWidth, $spriteHeight, $marge) {
+    $css = ".sprite {\n";
+    $css .= "  background-image: url('sprite.png');\n";
+    $css .= "  background-repeat: no-repeat;\n";
+    $css .= "  width: " . $spriteWidth . "px;\n";
+    $css .= "  height: " . $spriteHeight . "px;\n";
+    $css .= "}\n";
+
+    $currentX = 0;
+    $currentY = 0;
+
+    foreach ($files as $file) {
+        $imageName = pathinfo($file, PATHINFO_FILENAME);
+        $css .= ".$imageName { width: " . imagesx(imagecreatefrompng($file)) . "px; height: " . imagesy(imagecreatefrompng($file)) . "px; display: inline-block; margin-right: " . $marge . "px; margin-bottom: " . $marge . "px; }\n";
+    }
+
+    $nomStyle = isset($nomStyle) && $nomStyle !== '' ? $nomStyle : 'style.css';
+    file_put_contents($nomStyle, $css);
+}
+
+function trouverImages($dossier, $recursif) {
+    $files = [];
+    $dossier = realpath($dossier);
+
+    if (!$dossier) {
+        die("Erreur : Le dossier d'images spécifié n'existe pas.\n");
+    }
+
+    $files = glob($recursif ? "$dossier/**/*.png" : "$dossier/*.png", GLOB_BRACE);
+
+    return $files;
+}
+
+$options = getopt("i:s:r:m:");
+
+$nomImage = $options['i'] ?? $options['output-image'] ?? '';
+$nomStyle = $options['s'] ?? $options['output-style'] ?? '';
+$recursif = isset($options['r']) || isset($options['recursive']);
+$marge = isset($options['m']) ? intval($options['m']) : 10;
+
+genererSprite("/Users/marcomarques/Documents/W-PHP-501-PAR-1-1-cssgenerator-marco.marques/images.png", $nomImage, $nomStyle, $recursif, $marge);
+
+echo "Sprite et fichier CSS générés avec succès.\n";
+?>
